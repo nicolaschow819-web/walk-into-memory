@@ -29,7 +29,17 @@ final class AppEngine: NSObject, ObservableObject, MTKViewDelegate {
     private var placement: ScenePlacement?
     private var placedAt: CFTimeInterval = 0
     private var needsReplace = false
-    private var firstSorted = false
+    /// Thread-safe "first sort finished" flag. SplatRenderer.onSortComplete is
+    /// a @Sendable closure fired off the main thread, so it must not capture
+    /// the non-Sendable engine itself.
+    private final class SortGate: @unchecked Sendable {
+        private let lock = NSLock()
+        private var sorted = false
+        var isSorted: Bool { lock.lock(); defer { lock.unlock() }; return sorted }
+        func markSorted() { lock.lock(); sorted = true; lock.unlock() }
+        func reset() { lock.lock(); sorted = false; lock.unlock() }
+    }
+    private let sortGate = SortGate()
     private var stats: (near: Float, far: Float, quantiles: [Float], low: Float, high: Float)?
 
     override init() {
@@ -44,7 +54,8 @@ final class AppEngine: NSObject, ObservableObject, MTKViewDelegate {
                                       highQualityDepth: false,
                                       clearColor: MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0))
         super.init()
-        renderer.onSortComplete = { [weak self] _ in self?.firstSorted = true }
+        let gate = sortGate
+        renderer.onSortComplete = { _ in gate.markSorted() }
         CVMetalTextureCacheCreate(nil, nil, device, nil, &textureCache)
         buildPipelines()
     }
@@ -71,7 +82,7 @@ final class AppEngine: NSObject, ObservableObject, MTKViewDelegate {
         compositePipeline = try? device.makeRenderPipelineState(descriptor: compDesc)
     }
 
-    func attach(_ view: MTKView) {
+    @MainActor func attach(_ view: MTKView) {
         view.device = device
         view.delegate = self
         view.colorPixelFormat = .bgra8Unorm
@@ -94,7 +105,7 @@ final class AppEngine: NSObject, ObservableObject, MTKViewDelegate {
         DispatchQueue.main.async { self.status = "正在加载场景…" }
         sidecar = jsonURL.flatMap { SceneSidecar.load($0) }
         placement = nil
-        firstSorted = false
+        sortGate.reset()
         Task.detached { [weak self] in
             guard let self else { return }
             do {
@@ -120,13 +131,40 @@ final class AppEngine: NSObject, ObservableObject, MTKViewDelegate {
         }
     }
 
+    /// Called from the app's onAppear: reloads a bundled default.spz when one
+    /// is packaged, otherwise the most recently imported scene still staged in
+    /// Documents/Scenes. No-op on first launch, when nothing exists yet.
+    func loadDefaultSceneIfAvailable() {
+        if let bundled = Bundle.main.url(forResource: "default", withExtension: "spz") {
+            loadScene(spzURL: bundled,
+                      jsonURL: Bundle.main.url(forResource: "default", withExtension: "json"))
+            return
+        }
+        let fm = FileManager.default
+        let root = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Scenes", isDirectory: true)
+        guard let dirs = try? fm.contentsOfDirectory(
+            at: root, includingPropertiesForKeys: [.contentModificationDateKey]) else { return }
+        let scenes: [(spz: URL, json: URL?, date: Date)] = dirs.compactMap { dir in
+            guard let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil),
+                  let spz = files.first(where: { $0.pathExtension.lowercased() == "spz" })
+            else { return nil }
+            let json = files.first { $0.pathExtension.lowercased() == "json" }
+            let date = (try? dir.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate ?? .distantPast
+            return (spz, json, date)
+        }
+        guard let latest = scenes.max(by: { $0.date < $1.date }) else { return }
+        loadScene(spzURL: latest.spz, jsonURL: latest.json)
+    }
+
     private static func computeStats(_ points: [SplatPoint])
         -> (near: Float, far: Float, quantiles: [Float], low: Float, high: Float) {
-        let stride = max(1, points.count / 4096)
+        let step = max(1, points.count / 4096)
         var depths: [Float] = []
         var low = Float.greatestFiniteMagnitude
         var high = -Float.greatestFiniteMagnitude
-        for i in stride(from: 0, to: points.count, by: stride) {
+        for i in stride(from: 0, to: points.count, by: step) {
             let p = points[i].position
             depths.append(p.z)
             low = min(low, p.y)
@@ -192,7 +230,7 @@ final class AppEngine: NSObject, ObservableObject, MTKViewDelegate {
         let elapsed = Float(now - startTime)
 
         // Pass 1: splats into the offscreen target (only once placed + sorted).
-        if let placement, firstSorted {
+        if let placement, sortGate.isSorted {
             let progress = Float(min(1, max(0, (now - placedAt) / 2.5)))
             var reveal = SplatRenderer.RevealEffect(
                 progress: progress,
