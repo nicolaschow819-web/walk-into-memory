@@ -287,7 +287,7 @@ final class AppEngine: NSObject, ObservableObject, MTKViewDelegate {
     }
 
     private func ensureOffscreen(size: CGSize) {
-        let w = Int(size.width), let h = Int(size.height)
+        let w = Int(size.width), h = Int(size.height)
         if let offColor, offColor.width == w, offColor.height == h { return }
         let colorDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
