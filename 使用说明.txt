@@ -1,0 +1,35 @@
+走进回忆 · 使用说明（GitHub Pages 永久线上版）
+================================================
+
+【永久在线地址】
+https://nicolaschow819-web.github.io/walk-into-memory/
+（已部署至 GitHub Pages，永久有效，无需再启动本地服务器与隧道）
+
+------------------------------------------------
+【第 0 步】东西在哪
+项目文件夹：D:\电影生成\walk-into-memory-iphone
+本地生成文件目录：
+- splats\ 文件夹：原始 .ply（留档用，手机不用它）
+- splats_mobile\ 文件夹：手机版 .splat（例如 test_classroom.splat）
+
+------------------------------------------------
+【第 1 步】生成高斯泼溅场景（如需新场景）
+1. 把照片复制进项目里的 photos 文件夹（JPG、PNG 都行）。
+2. 双击 make_splat.bat 生成。
+3. 生成完成后在 splats_mobile\ 文件夹内获取 .splat 文件。
+
+------------------------------------------------
+【第 2 步】在 iPhone 上的使用步骤（无需开启电脑隧道）
+1. 先把 splats_mobile 目录下的场景文件（如 test_classroom.splat）传到 iPhone 并存进 iPhone 的「文件」App（可通过隔空投送 AirDrop、iCloud Drive、或微信传文件后点右上角存入「文件」）。
+2. 在 iPhone 上打开 Safari 浏览器，访问永久地址：
+   https://nicolaschow819-web.github.io/walk-into-memory/
+   （注意：必须使用系统自带 Safari 浏览器，不要使用微信内置浏览器打开）。
+3. 页面内点选「本地选择」加载 test_classroom.splat 文件，等约 1 分钟解包并出画面。
+4. 弹出陀螺仪/动作方向请求时点击「允许」；
+   - 举着手机转身 = 环视场景
+   - 按住屏幕往前走，走近时回忆画面会慢慢化作光尘消散。
+5. 如需 AR 实景，点击时允许摄像头授权；可录下整个交互过程。
+
+------------------------------------------------
+【提示】
+之前的本地服务（start_server.bat）和隧道（start_tunnel.bat）已正式退休，后续只需通过上方 GitHub Pages 地址即可随时访问。
