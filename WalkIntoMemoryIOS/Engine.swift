@@ -10,7 +10,13 @@ import simd
 /// Placement / reveal / dissolve mirror the visionOS original (ArtworkRenderer)
 /// with the head pose replaced by the iPhone's ARKit camera and the hand-driven
 /// dissolve sphere replaced by the camera position.
-final class AppEngine: NSObject, ObservableObject, MTKViewDelegate {
+/// @unchecked Sendable: Swift 6's region-isolation checker rejects capturing
+/// this class in @Sendable closures (DispatchQueue.main hops, Task.detached
+/// scene loading, MainActor.run result application). Cross-thread use is in
+/// practice narrow — status writes hop to the main queue, scene state is
+/// written during load before the draw loop reads it — so the class takes
+/// responsibility for its own synchronization instead of restructuring.
+final class AppEngine: NSObject, ObservableObject, MTKViewDelegate, @unchecked Sendable {
     @Published var status: String = "先导入一个 .spz 场景（可带同名 .json）"
     @Published var hasScene = false
 
