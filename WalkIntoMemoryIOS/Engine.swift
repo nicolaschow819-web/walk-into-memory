@@ -309,7 +309,7 @@ final class AppEngine: NSObject, ObservableObject, MTKViewDelegate, @unchecked S
             // Fullscreen quad (triangle strip), UVs mapped through displayTransform.
             let positions: [SIMD2<Float>] = [SIMD2(-1, -1), SIMD2(1, -1), SIMD2(-1, 1), SIMD2(1, 1)]
             let baseUV: [SIMD2<Float>] = [SIMD2(0, 1), SIMD2(1, 1), SIMD2(0, 0), SIMD2(1, 0)]
-            let dt = frame.displayTransform(for: .portrait, viewportSize: size)
+            let dt = frame.displayTransform(for: .portrait, viewportSize: size).inverted()
             let uvs: [SIMD2<Float>] = baseUV.map { uv in
                 let p = CGPoint(x: CGFloat(uv.x), y: CGFloat(uv.y)).applying(dt)
                 return SIMD2<Float>(Float(p.x), Float(p.y))
