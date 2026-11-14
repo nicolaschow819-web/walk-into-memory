@@ -141,10 +141,12 @@ final class AppEngine: NSObject, ObservableObject, MTKViewDelegate, @unchecked S
     /// is packaged, otherwise the most recently imported scene still staged in
     /// Documents/Scenes. No-op on first launch, when nothing exists yet.
     func loadDefaultSceneIfAvailable() {
-        if let bundled = Bundle.main.url(forResource: "default", withExtension: "spz") {
-            loadScene(spzURL: bundled,
-                      jsonURL: Bundle.main.url(forResource: "default", withExtension: "json"))
-            return
+        for name in ["default", "test_classroom"] {
+            if let bundled = Bundle.main.url(forResource: name, withExtension: "spz") {
+                loadScene(spzURL: bundled,
+                          jsonURL: Bundle.main.url(forResource: name, withExtension: "json"))
+                return
+            }
         }
         let fm = FileManager.default
         let root = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
