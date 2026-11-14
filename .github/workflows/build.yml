@@ -47,6 +47,10 @@ jobs:
         run: |
           APP=$(find build -name 'WalkIntoMemoryIOS.app' -type d | head -1)
           echo "App: $APP"
+          /usr/libexec/PlistBuddy -c "Delete :NSCameraUsageDescription" "$APP/Info.plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 需要相机来把回忆场景放进你所在的房间，并感知你的走动。" "$APP/Info.plist"
+          echo "Camera usage description in built app:"
+          /usr/libexec/PlistBuddy -c "Print :NSCameraUsageDescription" "$APP/Info.plist"
           rm -rf Payload WalkIntoMemoryIOS.ipa
           mkdir Payload
           cp -R "$APP" Payload/
